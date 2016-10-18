@@ -1,0 +1,147 @@
+---
+title: "Prediction Assignment"
+author: "Joseph Campbell"
+date: "10/18/2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Objective
+The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants who performed barbell lifts correctly and incorrectly in 5 different ways. More information about the original dataset is available from the website here: <http://groupware.les.inf.puc-rio.br/har> (see the section on the Weight Lifting Exercise Dataset).
+```{r getdata, include=FALSE} 
+pml.train<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+pml.test<-read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+pml.clean1<-pml.train[!colSums(is.na(pml.train)) > 500]
+
+pml.clean1$new_window<-NULL
+pml.clean1$kurtosis_roll_belt<-NULL
+pml.clean1$kurtosis_picth_belt <-NULL
+pml.clean1$kurtosis_yaw_belt <-NULL
+pml.clean1$skewness_roll_belt <-NULL
+pml.clean1$skewness_roll_belt.1<-NULL
+pml.clean1$skewness_yaw_belt <-NULL 
+pml.clean1$max_yaw_belt  <-NULL  
+pml.clean1$min_yaw_belt  <-NULL 
+pml.clean1$amplitude_yaw_belt<-NULL
+pml.clean1$kurtosis_roll_arm <-NULL
+pml.clean1$kurtosis_picth_arm <-NULL
+pml.clean1$kurtosis_yaw_arm <-NULL
+pml.clean1$skewness_roll_arm<-NULL
+pml.clean1$skewness_pitch_arm <-NULL
+pml.clean1$skewness_yaw_arm<-NULL
+pml.clean1$kurtosis_roll_dumbbell <-NULL
+pml.clean1$kurtosis_picth_dumbbell<-NULL
+pml.clean1$kurtosis_yaw_dumbbell <-NULL
+pml.clean1$skewness_roll_dumbbell <-NULL
+pml.clean1$skewness_pitch_dumbbell<-NULL
+pml.clean1$skewness_yaw_dumbbell <-NULL
+pml.clean1$max_yaw_dumbbell <-NULL
+pml.clean1$min_yaw_dumbbell <-NULL
+pml.clean1$amplitude_yaw_dumbbell<-NULL
+pml.clean1$kurtosis_roll_forearm <-NULL
+pml.clean1$kurtosis_picth_forearm <-NULL
+pml.clean1$kurtosis_yaw_forearm<-NULL
+pml.clean1$skewness_roll_forearm <-NULL
+pml.clean1$skewness_pitch_forearm <-NULL
+pml.clean1$skewness_yaw_forearm <-NULL
+pml.clean1$new_window<-NULL
+pml.clean1$kurtosis_roll_belt<-NULL
+pml.clean1$kurtosis_picth_belt <-NULL
+pml.clean1$kurtosis_yaw_belt <-NULL
+pml.clean1$skewness_roll_belt <-NULL
+pml.clean1$skewness_roll_belt.1<-NULL
+pml.clean1$skewness_yaw_belt <-NULL 
+pml.clean1$max_yaw_belt  <-NULL  
+pml.clean1$min_yaw_belt  <-NULL 
+pml.clean1$amplitude_yaw_belt<-NULL
+pml.clean1$kurtosis_roll_arm <-NULL
+pml.clean1$kurtosis_picth_arm <-NULL
+pml.clean1$kurtosis_yaw_arm <-NULL
+pml.clean1$skewness_roll_arm<-NULL
+pml.clean1$skewness_pitch_arm <-NULL
+pml.clean1$skewness_yaw_arm<-NULL
+pml.clean1$kurtosis_roll_dumbbell <-NULL
+pml.clean1$kurtosis_picth_dumbbell<-NULL
+pml.clean1$kurtosis_yaw_dumbbell <-NULL
+pml.clean1$skewness_roll_dumbbell <-NULL
+pml.clean1$skewness_pitch_dumbbell<-NULL
+pml.clean1$skewness_yaw_dumbbell <-NULL
+pml.clean1$max_yaw_dumbbell <-NULL
+pml.clean1$min_yaw_dumbbell <-NULL
+pml.clean1$amplitude_yaw_dumbbell<-NULL
+pml.clean1$kurtosis_roll_forearm <-NULL
+pml.clean1$kurtosis_picth_forearm <-NULL
+pml.clean1$kurtosis_yaw_forearm<-NULL
+pml.clean1$skewness_roll_forearm <-NULL
+pml.clean1$skewness_pitch_forearm <-NULL
+pml.clean1$skewness_yaw_forearm <-NULL
+pml.clean1$max_yaw_forearm<-NULL
+pml.clean1$min_yaw_forearm <-NULL
+pml.clean1$amplitude_yaw_forearm<-NULL
+pml.clean1$max_yaw_forearm<-NULL
+pml.clean1$min_yaw_forearm <-NULL
+pml.clean1$amplitude_yaw_forearm<-NULL
+
+pml.clean1$X<-NULL                   
+pml.clean1$user_name<-NULL
+pml.clean1$raw_timestamp_part_1<-NULL
+pml.clean1$raw_timestamp_part_2<-NULL 
+pml.clean1$cvtd_timestamp<-NULL
+```
+## Variable Reduction
+Many of the available predictors had large numbers of missing values and were removed from the candidate set. Likewise, five variables were important in identifying rows, but not conceptually linked to the outcome and were also removed. The original training dataset had 19622 observations and 160 variables. The final training dataset (cleaning code not shown) had 19622 observations and 54 variables.
+
+```{r train}
+str(pml.clean1)
+```
+
+## Random Forest
+Random forests are an ensemble learning method for classification that operate by constructing a multiple decision trees at training time and outputting the class that is the mode of the classes of the individual trees.<sup>[1](http://ect.bell-labs.com/who/tkh/publications/papers/odt.pdf)</sup>
+
+The training set was split into 80/20 training and validation sets in ordert to evaluate the resulting random forest via 5-fold cross validation using the caret package in R.
+
+```{r fitinit, include=FALSE}
+library(caret)
+require(randomForest)
+set.seed(2634)
+```
+```{r fit, echo=TRUE, include=FALSE}
+inTrain<-createDataPartition(y=pml.clean1$classe, p=0.80,list=F)
+train<-pml.clean1[inTrain,] 
+test<-pml.clean1[-inTrain,] 
+
+fit.c<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+fit.rf<-train(classe~.,data=train, method="rf", trControl=fit.c, verbose=F)
+```
+
+## Results
+To evaluate the fit of the random forest model, a validation dataset was withheld and scored. The model is highly accurate. The overall accuracy of the model is 99% with a corresponding Kappa value of 0.99.
+
+```{r res1}
+pred.rf<-predict(fit.rf,newdata=test)
+conf.mat<-confusionMatrix(pred.rf,test$classe)
+conf.mat
+```
+
+```{r res2, echo=FALSE}
+tab<-as.data.frame(as.table(conf.mat))
+ggplot(data=tab,mapping=aes(x=Reference, y=Prediction))+
+geom_tile(aes(fill=Freq),colour="white")+
+geom_text(aes(label = sprintf("%1.0f",Freq)),vjust=1)+
+scale_fill_gradient(low="#67a9cf",high="#ef8a62")+
+theme_bw()+theme(legend.position="none")
+```
+
+The plot of the confusion matrix resulting from the 5-fold cross validation depicts the high accuracy of the model. A large number of predictions match their reference category.
+
+## Final Predictions
+```{r pred}
+pred20<-predict(fit.rf,newdata=pml.test)
+pred20
+```
+
+Finally, the random forest model was used to score the test data provided. The predicted action groupings for the 20 observations in the data set are displayed above.
